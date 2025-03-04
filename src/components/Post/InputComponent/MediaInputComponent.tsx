@@ -1,29 +1,53 @@
 import { CameraView, CameraType, useCameraPermissions } from 'expo-camera';
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { Button, StyleSheet, Text, TouchableOpacity, View, Image, Dimensions } from 'react-native';
 import { Entypo, Ionicons, MaterialIcons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
-import { Video } from 'expo-av';
+import { Video, ResizeMode } from 'expo-av';
 
 export default function App() {
     const [facing, setFacing] = useState<CameraType>('back');
     const [flash, setFlash] = useState<string>('off');
-    const cameraRef = useRef(null);
+    const cameraRef = useRef<CameraView>(null);
     const [permission, requestPermission] = useCameraPermissions();
 
-    // New state variables for media preview
+    // New state for video mode and recording
+    const [isVideoMode, setIsVideoMode] = useState(false);
+    const [isRecording, setIsRecording] = useState(false);
+    const [recordingDuration, setRecordingDuration] = useState(0);
+    const recordingIntervalRef = useRef<NodeJS.Timeout | null>(null);
+
     const [mediaPreview, setMediaPreview] = useState<null | {
         uri: string;
         type: 'image' | 'video';
     }>(null);
 
+    // Timer effect for recording duration
+    useEffect(() => {
+        if (isRecording) {
+            setRecordingDuration(0);
+            recordingIntervalRef.current = setInterval(() => {
+                setRecordingDuration(prev => prev + 1);
+            }, 1000);
+
+            return () => {
+                if (recordingIntervalRef.current) {
+                    clearInterval(recordingIntervalRef.current);
+                }
+            };
+        } else {
+            if (recordingIntervalRef.current) {
+                clearInterval(recordingIntervalRef.current);
+            }
+            setRecordingDuration(0);
+        }
+    }, [isRecording]);
+
     if (!permission) {
-        // Camera permissions are still loading.
         return <View />;
     }
 
     if (!permission.granted) {
-        // Camera permissions are not granted yet.
         return (
             <View style={styles.container}>
                 <Text style={styles.message}>We need your permission to show the camera</Text>
@@ -40,25 +64,64 @@ export default function App() {
         setFlash(current => (current === 'off' ? 'on' : 'off'));
     }
 
-    // Function to discard the preview
-    function discardPreview() {
-        setMediaPreview(null);
+    // Toggle between photo and video mode
+    function toggleVideoMode() {
+        setIsVideoMode(!isVideoMode);
     }
 
-    async function takePicture() {
-        if (cameraRef.current) {
-            const photo = await cameraRef.current.takePictureAsync();
-            console.log(photo);
-            // Set the captured photo for preview
-            setMediaPreview({
-                uri: photo.uri,
-                type: 'image'
-            });
+    function discardPreview() {
+        setMediaPreview(null);
+        setIsRecording(false);
+    }
+
+    // Format duration to MM:SS
+    function formatDuration(seconds: number) {
+        const minutes = Math.floor(seconds / 60);
+        const remainingSeconds = seconds % 60;
+        return `${minutes.toString().padStart(2, '0')}:${remainingSeconds.toString().padStart(2, '0')}`;
+    }
+
+    async function takePictureOrStartRecording() {
+        if (isVideoMode) {
+            // Video recording logic
+            if (cameraRef.current) {
+                if (!isRecording) {
+                    try {
+                        setIsRecording(true);
+                        const video = await cameraRef.current.recordAsync();
+                        setMediaPreview({
+                            uri: video.uri,
+                            type: 'video'
+                        });
+                        setIsRecording(false);
+                    } catch (error) {
+                        console.error('Recording failed', error);
+                        setIsRecording(false);
+                    }
+                } else {
+                    if (cameraRef.current) {
+                        cameraRef.current.stopRecording();
+                        setIsRecording(false);
+                    }
+                }
+            }
+        } else {
+            // Existing photo capture logic
+            if (cameraRef.current) {
+                const photo = await cameraRef.current.takePictureAsync();
+                if (photo) {
+                    setMediaPreview({
+                        uri: photo.uri,
+                        type: 'image'
+                    });
+                } else {
+                    console.error('Failed to capture photo');
+                }
+            }
         }
     }
 
     async function openPhotoLibrary() {
-        // Request permission to access the photo library
         const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
 
         if (status !== 'granted') {
@@ -66,25 +129,19 @@ export default function App() {
             return;
         }
 
-        // Launch the image picker
         const result = await ImagePicker.launchImageLibraryAsync({
-            mediaTypes: ImagePicker.MediaTypeOptions.All, // Allow both photos and videos
+            mediaTypes: ImagePicker.MediaTypeOptions.All,
             allowsEditing: true,
-            // aspect: [4, 3],
             quality: 1,
         });
 
         if (!result.canceled && result.assets && result.assets.length > 0) {
             const asset = result.assets[0];
-            console.log(asset);
-
-            // Determine if it's an image or video based on file extension
             const isVideo = asset.uri.endsWith('.mp4') ||
                 asset.uri.endsWith('.mov') ||
                 asset.uri.endsWith('.avi') ||
                 (asset.type && asset.type.startsWith('video'));
 
-            // Set the selected media for preview
             setMediaPreview({
                 uri: asset.uri,
                 type: isVideo ? 'video' : 'image'
@@ -92,7 +149,6 @@ export default function App() {
         }
     }
 
-    // If we have a media preview, show that instead of the camera
     if (mediaPreview) {
         return (
             <View style={styles.container}>
@@ -101,17 +157,14 @@ export default function App() {
                         <Image
                             source={{ uri: mediaPreview.uri }}
                             style={styles.mediaPreview}
-                            // In your Image component
-                            // For both Image and Video components
-                            resizeMode="cover" // Instead of "cover"
+                            resizeMode="cover"
                         />
                     ) : (
                         <Video
                             source={{ uri: mediaPreview.uri }}
                             style={styles.mediaPreview}
                             useNativeControls
-                            // For both Image and Video components
-                            resizeMode="cover"
+                            resizeMode={ResizeMode.COVER}
                             isLooping
                             shouldPlay
                         />
@@ -135,7 +188,26 @@ export default function App() {
                 flash={flash}
                 shutterSound={false}
                 ref={cameraRef}
+                mode={isVideoMode ? "video" : "picture"}
             >
+                {/* Mode Indicator now in top left */}
+                {isVideoMode && (
+                    <View style={styles.topLeftContainer}>
+                        <Text style={[styles.text, styles.videoModeText]}>
+                            Video Mode
+                        </Text>
+                    </View>
+                )}
+
+                {/* Recording Duration now horizontally centered */}
+                {isVideoMode && isRecording && (
+                    <View style={styles.horizontalCenterContainer}>
+                        <Text style={[styles.text, styles.recordingDurationText]}>
+                            {formatDuration(recordingDuration)}
+                        </Text>
+                    </View>
+                )}
+
                 <View style={styles.controlsContainer}>
                     <TouchableOpacity style={styles.controlButton} onPress={toggleFlash}>
                         <Ionicons
@@ -151,10 +223,23 @@ export default function App() {
                             color="white"
                         />
                     </TouchableOpacity>
+                    <TouchableOpacity style={styles.controlButton} onPress={toggleVideoMode}>
+                        <MaterialIcons
+                            name={isVideoMode ? "videocam-off" : "videocam"}
+                            size={24}
+                            color="white"
+                        />
+                    </TouchableOpacity>
                 </View>
 
                 <View style={styles.captureContainer}>
-                    <TouchableOpacity style={styles.captureButton} onPress={takePicture}>
+                    <TouchableOpacity
+                        style={[
+                            styles.captureButton,
+                            isRecording && styles.recordingButton
+                        ]}
+                        onPress={takePictureOrStartRecording}
+                    >
                         <View style={styles.captureInner}></View>
                     </TouchableOpacity>
                 </View>
@@ -197,6 +282,18 @@ const styles = StyleSheet.create({
         flexDirection: 'column',
         alignItems: 'center',
     },
+    topLeftContainer: {
+        position: 'absolute',
+        top: 10,
+        left: 10,
+    },
+    horizontalCenterContainer: {
+        position: 'absolute',
+        top: 10,
+        left: 0,
+        right: 0,
+        alignItems: 'center',
+    },
     galleryContainer: {
         position: 'absolute',
         bottom: 1,
@@ -232,7 +329,6 @@ const styles = StyleSheet.create({
         fontWeight: 'bold',
         color: 'white',
     },
-    // New styles for media preview
     previewContainer: {
         flex: 1,
         position: 'relative',
@@ -256,5 +352,21 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         alignItems: 'center',
         zIndex: 10,
+    },
+    videoModeText: {
+        fontSize: 12,
+        color: 'white',
+        backgroundColor: 'rgba(0,0,0,0.5)',
+        paddingHorizontal: 5,
+        paddingVertical: 5,
+        borderRadius: 25,
+    },
+    recordingDurationText: {
+        fontSize: 12,
+        color: 'white',
+    },
+    recordingButton: {
+        borderWidth: 3,
+        borderColor: 'red',
     }
 });
