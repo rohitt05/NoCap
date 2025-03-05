@@ -5,7 +5,7 @@ import GifInputComponent from './GifInputComponent';
 import VoiceInputComponent from './VoiceInputComponent';
 import MediaInputComponent from './MediaInputComponent';
 
-const InputComponent = ({ activeTab, inputText, setInputText }) => {
+const InputComponent = ({ activeTab = 'TEXT', inputText, setInputText }) => {
     // Render input based on active tab
     const renderInput = () => {
         switch (activeTab) {
@@ -18,7 +18,7 @@ const InputComponent = ({ activeTab, inputText, setInputText }) => {
             case 'MEDIA':
                 return <MediaInputComponent />;
             default:
-                return null;
+                return <TextInputComponent inputText={inputText} setInputText={setInputText} />;
         }
     };
 
@@ -32,10 +32,9 @@ const InputComponent = ({ activeTab, inputText, setInputText }) => {
 const styles = StyleSheet.create({
     responseArea: {
         height: 200,
-        // justifyContent: 'center',
         flex: 1,
         marginBottom: 10,
-        overflow: 'hidden', // Ensure child components don't overflow the rounded corners
+        overflow: 'hidden',
     },
 });
 

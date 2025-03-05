@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ActivityIndicator, TouchableOpacity } from 'react-native';
 import promptsData from '../../../assets/prompt/prompt.json';
 import { loadFonts, fonts } from '../../utils/Fonts/fonts';
+import { Link } from 'expo-router';
 
 const PromptOfTheDay = () => {
     const [fontsLoaded, setFontsLoaded] = useState(false);
@@ -91,18 +92,20 @@ const PromptOfTheDay = () => {
                 <Text style={styles.promptTitle}>Prompt of the day</Text>
             </View>
 
-            <TouchableOpacity style={styles.promptCard}>
-                <View style={styles.promptContainer}>
-                    <View style={styles.promptTextBorder}>
-                        <Text style={styles.promptText}>{promptsData.text}</Text>
+            <Link href="(tabs)/post/" asChild>
+                <TouchableOpacity style={styles.promptCard}>
+                    <View style={styles.promptContainer}>
+                        <View style={styles.promptTextBorder}>
+                            <Text style={styles.promptText}>{promptsData.text}</Text>
+                        </View>
                     </View>
-                </View>
 
-                <View style={styles.footer}>
-                    <Text style={styles.tapToAnswerText}>"tap to answer"</Text>
-                    <Text style={styles.promptTime}>{promptsData.time}</Text>
-                </View>
-            </TouchableOpacity>
+                    <View style={styles.footer}>
+                        <Text style={styles.tapToAnswerText}>"tap to answer"</Text>
+                        <Text style={styles.promptTime}>{promptsData.time}</Text>
+                    </View>
+                </TouchableOpacity>
+            </Link>
 
             {/* Time Remaining Progress Bar */}
             <View style={styles.progressContainer}>

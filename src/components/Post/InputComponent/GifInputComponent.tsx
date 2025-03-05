@@ -205,7 +205,7 @@ const styles = StyleSheet.create({
         flex: 1,
         backgroundColor: '#000',
         borderRadius: 12,
-        maxHeight: 400,
+        maxHeight: 700,
     },
     searchContainer: {
         padding: 10,

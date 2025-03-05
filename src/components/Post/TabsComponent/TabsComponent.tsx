@@ -125,7 +125,6 @@ const styles = StyleSheet.create({
     tabsWrapper: {
         width: '100%',
         height: 50,
-        marginBottom: 20,
         position: 'relative',
     },
     fixedIndicatorContainer: {
