@@ -1,22 +1,43 @@
-// components/responses/Responses.tsx
-import React from 'react';
-import { View, ScrollView, StyleSheet, Text } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { View, ScrollView, StyleSheet, Text, ActivityIndicator } from 'react-native';
 import ResponseItem from './components/ResponseItem';
-import { ResponseItemData, ResponsesData } from './types';
 import { fonts } from '../../utils/Fonts/fonts';
+import { fetchResponses } from '../../api/fetchResponses';
 
-// Accept data as a prop instead of importing directly
-const Responses: React.FC<{ responsesData: ResponsesData }> = ({ responsesData }) => {
-    const { responses_received } = responsesData;
+const Responses: React.FC = () => {
+    const [responses, setResponses] = useState([]);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        const loadResponses = async () => {
+            const { data, error } = await fetchResponses();
+
+            if (error) {
+                console.error('Error fetching responses:', error);
+            } else {
+                setResponses(data || []);
+            }
+            setLoading(false);
+        };
+
+        loadResponses();
+    }, []);
 
     return (
         <View style={styles.container}>
             <Text style={styles.headerText}>Your Friends' Responses</Text>
-            <ScrollView contentContainerStyle={styles.scrollViewContent}>
-                {responses_received.map((item: ResponseItemData) => (
-                    <ResponseItem key={item.id} item={item} />
-                ))}
-            </ScrollView>
+
+            {loading ? (
+                <ActivityIndicator size="large" color="#fff" style={{ marginTop: 20 }} />
+            ) : (
+                <ScrollView contentContainerStyle={styles.scrollViewContent}>
+                    {responses.length > 0 ? (
+                        responses.map((item) => <ResponseItem key={item.id} item={item} />)
+                    ) : (
+                        <Text style={styles.noResponsesText}>No responses yet</Text>
+                    )}
+                </ScrollView>
+            )}
         </View>
     );
 };
@@ -35,6 +56,13 @@ const styles = StyleSheet.create({
     },
     scrollViewContent: {
         padding: 10,
+    },
+    noResponsesText: {
+        color: '#888',
+        fontSize: 16,
+        fontFamily: fonts.italic,
+        textAlign: 'center',
+        marginTop: 20,
     },
 });
 

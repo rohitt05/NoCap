@@ -2,50 +2,86 @@ import React from 'react';
 import { View, Text, Image, StyleSheet, TouchableOpacity } from 'react-native';
 import { ResponseItemProps } from '../types';
 import { Entypo, Feather } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
-import { fonts } from '../../../utils/Fonts/fonts'; // Update with the correct path
+import { fonts } from '../../../utils/Fonts/fonts';
+
+// Add this function to format relative time
+const getRelativeTime = (timestamp: string | number | Date) => {
+    if (!timestamp) return 'Just now';
+
+    const now = new Date();
+    const past = new Date(timestamp);
+    const diffMs = now.getTime() - past.getTime();
+
+    // Convert to seconds
+    const diffSec = Math.floor(diffMs / 1000);
+
+    // Less than a minute
+    if (diffSec < 60) {
+        return diffSec <= 5 ? 'Just now' : `${diffSec} secs ago`;
+    }
+
+    // Less than an hour
+    const diffMin = Math.floor(diffSec / 60);
+    if (diffMin < 60) {
+        return diffMin === 1 ? '1 min ago' : `${diffMin} mins ago`;
+    }
+
+    // Less than a day
+    const diffHour = Math.floor(diffMin / 60);
+    if (diffHour < 24) {
+        return diffHour === 1 ? '1 hour ago' : `${diffHour} hours ago`;
+    }
+
+    // Less than a week
+    const diffDay = Math.floor(diffHour / 24);
+    if (diffDay < 7) {
+        return diffDay === 1 ? 'Yesterday' : `${diffDay} days ago`;
+    }
+
+    // Less than a month
+    const diffWeek = Math.floor(diffDay / 7);
+    if (diffWeek < 4) {
+        return diffWeek === 1 ? '1 week ago' : `${diffWeek} weeks ago`;
+    }
+
+    // Format as date for older posts
+    const options: Intl.DateTimeFormatOptions = { month: 'short', day: 'numeric' };
+    return past.toLocaleDateString('en-US', options);
+};
 
 const TextResponse: React.FC<ResponseItemProps> = ({ item }) => {
     return (
         <View style={styles.responseItem}>
-            {/* <LinearGradient
-                colors={['#000', '#000033', '#000066']}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 0, y: 1 }}
-                style={styles.backgroundGradient}
-            /> */}
-
             <View style={styles.contentContainer}>
                 <View style={styles.header}>
-                    <Image
-                        source={{ uri: item.profile_picture_url }}
-                        style={styles.profilePic}
-                    />
+                    {/* Profile Picture */}
+                    {item.profile_picture_url ? (
+                        <Image source={{ uri: item.profile_picture_url }} style={styles.profilePic} />
+                    ) : (
+                        <View style={styles.placeholderPic} />
+                    )}
+
+                    {/* Username & Timestamp */}
                     <View style={styles.headerInfo}>
-                        <Text style={styles.username}>{item.user}</Text>
-                        <Text style={styles.timestamp}>{new Date(item.timestamp).toLocaleString()}</Text>
+                        <Text style={styles.username}>{item.username || 'Unknown User'}</Text>
+                        <Text style={styles.timestamp}>
+                            {getRelativeTime(item.timestamp)}
+                        </Text>
                     </View>
                 </View>
 
-                {/* Menu dots in top right corner */}
+                {/* Rest of your component remains the same */}
                 <TouchableOpacity style={styles.menuDotsContainer}>
                     <Entypo name="dots-two-vertical" size={16} color="#fff" style={styles.menuDots} />
                 </TouchableOpacity>
 
-                {/* Text content with quote */}
                 <View style={styles.textContentContainer}>
                     <Text style={styles.quoteSymbol}>"</Text>
-                    <Text style={styles.textContent}>{item.text}</Text>
+                    <Text style={styles.textContent}>{item.response_content || 'No response'}</Text>
                 </View>
 
-                {/* BeReal-style emoji reactions container */}
                 <View style={styles.reactionsContainer}>
-                    {/* Feather icon */}
-                    <Feather name="send" size={18} color="#fff" style={{
-                        top: 8,
-                        right: 5,
-                    }} />
-                    {/* Emoji icons */}
+                    <Feather name="send" size={18} color="#fff" style={{ top: 8, right: 5 }} />
                     <TouchableOpacity style={styles.reactionButton}>
                         <Entypo name="emoji-flirt" size={18} color="#fff" />
                     </TouchableOpacity>
@@ -58,6 +94,7 @@ const TextResponse: React.FC<ResponseItemProps> = ({ item }) => {
     );
 };
 
+
 const styles = StyleSheet.create({
     responseItem: {
         borderWidth: 0.3,
@@ -67,13 +104,6 @@ const styles = StyleSheet.create({
         height: 200,
         overflow: 'hidden',
         position: 'relative',
-    },
-    backgroundGradient: {
-        position: 'absolute',
-        left: 0,
-        right: 0,
-        top: 0,
-        bottom: 0,
     },
     contentContainer: {
         padding: 12,
@@ -91,6 +121,12 @@ const styles = StyleSheet.create({
         borderRadius: 18,
         borderWidth: 1,
         borderColor: 'rgba(255,255,255,0.3)',
+    },
+    placeholderPic: {
+        width: 36,
+        height: 36,
+        borderRadius: 18,
+        backgroundColor: '#444',
     },
     headerInfo: {
         marginLeft: 10,
@@ -122,7 +158,7 @@ const styles = StyleSheet.create({
         lineHeight: 22,
         color: '#e0e0e0',
         flex: 1,
-        fontFamily: fonts.semiBold, // Using Figtree Regular font
+        fontFamily: fonts.semiBold,
     },
     reactionsContainer: {
         flexDirection: 'row',
@@ -139,7 +175,7 @@ const styles = StyleSheet.create({
         borderColor: 'rgba(255,255,255,0.4)',
         backgroundColor: 'rgba(0, 0, 0, 0.6)',
         marginLeft: 6,
-        borderStyle: "dashed",
+        borderStyle: 'dashed',
         justifyContent: 'center',
         alignItems: 'center',
     },

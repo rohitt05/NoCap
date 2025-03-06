@@ -6,23 +6,54 @@ import { Text } from 'react-native';
 import { Image } from 'expo-image'; // Changed to use expo-image
 import { Ionicons, Entypo, Feather, FontAwesome } from '@expo/vector-icons';
 import { fonts } from '../../../utils/Fonts/fonts';
+import { ResponseItemProps } from '../types';
 
-// Define types for component props
-interface MediaItem {
-    type: 'image' | 'video' | 'gif';
-    media_url: string;
-    thumbnail_url?: string;
-    user: string;
-    profile_picture_url: string;
-    timestamp: string;
-    caption?: string;
-}
+// Add this function to format relative time (similar to TextResponse)
+const getRelativeTime = (timestamp: string | number | Date) => {
+    if (!timestamp) return 'Just now';
 
-interface MediaResponseProps {
-    item: MediaItem;
-}
+    const now = new Date();
+    const past = new Date(timestamp);
+    const diffMs = now.getTime() - past.getTime();
 
-const MediaResponse: React.FC<MediaResponseProps> = ({ item }) => {
+    // Convert to seconds
+    const diffSec = Math.floor(diffMs / 1000);
+
+    // Less than a minute
+    if (diffSec < 60) {
+        return diffSec <= 5 ? 'Just now' : `${diffSec} secs ago`;
+    }
+
+    // Less than an hour
+    const diffMin = Math.floor(diffSec / 60);
+    if (diffMin < 60) {
+        return diffMin === 1 ? '1 min ago' : `${diffMin} mins ago`;
+    }
+
+    // Less than a day
+    const diffHour = Math.floor(diffMin / 60);
+    if (diffHour < 24) {
+        return diffHour === 1 ? '1 hour ago' : `${diffHour} hours ago`;
+    }
+
+    // Less than a week
+    const diffDay = Math.floor(diffHour / 24);
+    if (diffDay < 7) {
+        return diffDay === 1 ? 'Yesterday' : `${diffDay} days ago`;
+    }
+
+    // Less than a month
+    const diffWeek = Math.floor(diffDay / 7);
+    if (diffWeek < 4) {
+        return diffWeek === 1 ? '1 week ago' : `${diffWeek} weeks ago`;
+    }
+
+    // Format as date for older posts
+    const options: Intl.DateTimeFormatOptions = { month: 'short', day: 'numeric' };
+    return past.toLocaleDateString('en-US', options);
+};
+
+const MediaResponse: React.FC<ResponseItemProps> = ({ item }) => {
     const [videoPlaying, setVideoPlaying] = useState<boolean>(false);
     const [videoUri, setVideoUri] = useState<string>("");
     const [videoError, setVideoError] = useState<string | null>(null);
@@ -32,13 +63,17 @@ const MediaResponse: React.FC<MediaResponseProps> = ({ item }) => {
     // Debug tap events
     const [tapCount, setTapCount] = useState<number>(0);
 
+    // Determine media type from response_type and URL
+    const mediaType = item.response_type; // 'image', 'video', or 'gif'
+    const mediaUrl = item.response_content; // URL is stored in response_content
+
     // Resolve the correct video URI when component mounts
     useEffect(() => {
-        if (item.type === 'video' && item.media_url) {
-            console.log('Initializing video with media_url:', item.media_url);
-            resolveVideoUri(item.media_url);
+        if (mediaType === 'video' && mediaUrl) {
+            console.log('Initializing video with media_url:', mediaUrl);
+            resolveVideoUri(mediaUrl);
         }
-    }, [item]);
+    }, [mediaType, mediaUrl]);
 
     // Function to resolve local file paths to proper URIs
     const resolveVideoUri = (uri: string): void => {
@@ -221,37 +256,37 @@ const MediaResponse: React.FC<MediaResponseProps> = ({ item }) => {
         setVideoError(`Error: ${error}`);
 
         // Try alternate URIs if initial load fails
-        if (videoUri === item.media_url ||
-            videoUri === `file://${item.media_url}` ||
+        if (videoUri === mediaUrl ||
+            videoUri === `file://${mediaUrl}` ||
             videoUri.includes(FileSystem.documentDirectory)) {
             console.log('Initial URI failed, trying alternates');
-            tryAlternateUriFormats(item.media_url || "");
+            tryAlternateUriFormats(mediaUrl || "");
         }
     };
 
     // Render method for different media types
     const renderMedia = () => {
-        if (item.type === 'image' && item.media_url) {
+        if (mediaType === 'image' && mediaUrl) {
             return (
                 <Image
-                    source={{ uri: item.media_url }}
+                    source={{ uri: mediaUrl }}
                     style={styles.mediaContent}
                     contentFit="cover"
                     transition={200}
                 />
             );
-        } else if (item.type === 'gif' && item.media_url) {
+        } else if (mediaType === 'gif' && mediaUrl) {
             // Use expo-image for GIFs
             return (
                 <Image
-                    source={{ uri: item.media_url }}
+                    source={{ uri: mediaUrl }}
                     style={styles.mediaContent}
                     contentFit="cover"
                     transition={200}
                     cachePolicy="memory-disk"
                 />
             );
-        } else if (item.type === 'video') {
+        } else if (mediaType === 'video') {
             return (
                 <>
                     {/* Video component */}
@@ -272,7 +307,7 @@ const MediaResponse: React.FC<MediaResponseProps> = ({ item }) => {
                                 setVideoError(null);
                             }
                         }}
-                        posterSource={{ uri: item.thumbnail_url || item.media_url }}
+                        posterSource={{ uri: mediaUrl }} // Use the same URL as poster image
                         usePoster={true}
                         posterStyle={styles.mediaPoster}
                     />
@@ -286,7 +321,7 @@ const MediaResponse: React.FC<MediaResponseProps> = ({ item }) => {
                             </Text>
                             <TouchableOpacity
                                 style={styles.retryButton}
-                                onPress={() => resolveVideoUri(item.media_url || "")}
+                                onPress={() => resolveVideoUri(mediaUrl || "")}
                             >
                                 <Ionicons name="refresh" size={16} color="white" />
                                 <Text style={styles.retryText}>Retry</Text>
@@ -312,15 +347,21 @@ const MediaResponse: React.FC<MediaResponseProps> = ({ item }) => {
 
             {/* Header overlay */}
             <View style={styles.overlayHeader}>
-                <Image
-                    source={{ uri: item.profile_picture_url }}
-                    style={styles.profilePic}
-                    contentFit="cover"
-                    transition={100}
-                />
+                {/* Profile Picture */}
+                {item.profile_picture_url ? (
+                    <Image
+                        source={{ uri: item.profile_picture_url }}
+                        style={styles.profilePic}
+                        contentFit="cover"
+                        transition={100}
+                    />
+                ) : (
+                    <View style={styles.placeholderPic} />
+                )}
+
                 <View style={styles.headerInfo}>
-                    <Text style={styles.overlayUsername}>{item.user}</Text>
-                    <Text style={styles.overlayTimestamp}>{new Date(item.timestamp).toLocaleString()}</Text>
+                    <Text style={styles.overlayUsername}>{item.username || 'Unknown User'}</Text>
+                    <Text style={styles.overlayTimestamp}>{getRelativeTime(item.timestamp)}</Text>
                 </View>
 
                 {/* Menu dots in top right corner */}
@@ -331,12 +372,10 @@ const MediaResponse: React.FC<MediaResponseProps> = ({ item }) => {
 
             {/* Bottom bar with caption and reactions on the same line */}
             <View style={styles.bottomBar}>
-                {/* Caption on the left */}
-                {item.caption && (
-                    <Text style={styles.overlayCaption} numberOfLines={2} ellipsizeMode="tail">
-                        {item.caption}
-                    </Text>
-                )}
+                {/* Caption or response content summary if needed */}
+                <Text style={styles.overlayCaption} numberOfLines={2} ellipsizeMode="tail">
+                    {mediaType === 'gif' ? 'GIF Response' : (mediaType === 'video' ? 'Video Response' : 'Image Response')}
+                </Text>
 
                 {/* Reactions container on the right */}
                 <View style={styles.reactionsGroup}>
@@ -353,7 +392,7 @@ const MediaResponse: React.FC<MediaResponseProps> = ({ item }) => {
             </View>
 
             {/* Play/Pause button with Feather icons */}
-            {item.type === 'video' && (
+            {mediaType === 'video' && (
                 <TouchableOpacity
                     style={styles.debugButton}
                     onPress={toggleVideoPlayback}
@@ -420,6 +459,12 @@ const styles = StyleSheet.create({
         borderRadius: 18,
         borderWidth: 1,
         borderColor: 'rgba(255,255,255,0.3)',
+    },
+    placeholderPic: {
+        width: 36,
+        height: 36,
+        borderRadius: 18,
+        backgroundColor: '#444',
     },
     headerInfo: {
         marginLeft: 10,

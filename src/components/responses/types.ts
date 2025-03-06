@@ -7,8 +7,11 @@ export interface Reaction {
 }
 
 export interface ResponseItemData {
+    response_content: string;
+    username: string;
+    // response_type: any;
     id: string;
-    type: 'text' | 'image' | 'video' | 'audio' | 'gif';
+    response_type: 'text' | 'image' | 'video' | 'audio' | 'gif';
     user: string;
     profile_picture_url: string;
     timestamp: string;

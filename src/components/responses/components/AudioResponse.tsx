@@ -9,6 +9,51 @@ import { fonts } from '../../../utils/Fonts/fonts';
 
 const { width } = Dimensions.get('window');
 
+// Add this function to format relative time (similar to the TextResponse component)
+const getRelativeTime = (timestamp: string | number | Date) => {
+    if (!timestamp) return 'Just now';
+
+    const now = new Date();
+    const past = new Date(timestamp);
+    const diffMs = now.getTime() - past.getTime();
+
+    // Convert to seconds
+    const diffSec = Math.floor(diffMs / 1000);
+
+    // Less than a minute
+    if (diffSec < 60) {
+        return diffSec <= 5 ? 'Just now' : `${diffSec} secs ago`;
+    }
+
+    // Less than an hour
+    const diffMin = Math.floor(diffSec / 60);
+    if (diffMin < 60) {
+        return diffMin === 1 ? '1 min ago' : `${diffMin} mins ago`;
+    }
+
+    // Less than a day
+    const diffHour = Math.floor(diffMin / 60);
+    if (diffHour < 24) {
+        return diffHour === 1 ? '1 hour ago' : `${diffHour} hours ago`;
+    }
+
+    // Less than a week
+    const diffDay = Math.floor(diffHour / 24);
+    if (diffDay < 7) {
+        return diffDay === 1 ? 'Yesterday' : `${diffDay} days ago`;
+    }
+
+    // Less than a month
+    const diffWeek = Math.floor(diffDay / 7);
+    if (diffWeek < 4) {
+        return diffWeek === 1 ? '1 week ago' : `${diffWeek} weeks ago`;
+    }
+
+    // Format as date for older posts
+    const options: Intl.DateTimeFormatOptions = { month: 'short', day: 'numeric' };
+    return past.toLocaleDateString('en-US', options);
+};
+
 const AudioResponse: React.FC<ResponseItemProps> = ({ item }) => {
     const [playing, setPlaying] = useState<boolean>(false);
     const [sound, setSound] = useState<Audio.Sound | null>(null);
@@ -51,11 +96,14 @@ const AudioResponse: React.FC<ResponseItemProps> = ({ item }) => {
         animateWaves();
     }, []);
 
-    // Initialize audio when component mounts
+    // Initialize audio when component mounts - updated to use response_content
     useEffect(() => {
         const initializeAudio = async () => {
             try {
-                if (item.media_url) {
+                // Use response_content as the audio URL
+                const audioUrl = item.response_content;
+
+                if (audioUrl) {
                     // Make sure to unload any previous sound
                     if (sound) {
                         await sound.unloadAsync();
@@ -63,7 +111,7 @@ const AudioResponse: React.FC<ResponseItemProps> = ({ item }) => {
 
                     // Pre-load the audio file but don't play it yet
                     const { sound: newSound } = await Audio.Sound.createAsync(
-                        { uri: item.media_url },
+                        { uri: audioUrl },
                         { shouldPlay: false },
                         onPlaybackStatusUpdate
                     );
@@ -82,7 +130,7 @@ const AudioResponse: React.FC<ResponseItemProps> = ({ item }) => {
         };
 
         initializeAudio();
-    }, [item.media_url]);
+    }, [item.response_content]);
 
     // Callback for audio playback status updates
     const onPlaybackStatusUpdate = (status: any) => {
@@ -96,14 +144,15 @@ const AudioResponse: React.FC<ResponseItemProps> = ({ item }) => {
         }
     };
 
-    // Function to handle audio playback
+    // Function to handle audio playback - updated to use response_content
     const playAudio = async (): Promise<void> => {
         try {
             if (!sound) {
                 // If sound is not loaded yet, initialize it
-                if (item.media_url) {
+                const audioUrl = item.response_content;
+                if (audioUrl) {
                     const { sound: newSound } = await Audio.Sound.createAsync(
-                        { uri: item.media_url },
+                        { uri: audioUrl },
                         { shouldPlay: true },
                         onPlaybackStatusUpdate
                     );
@@ -218,13 +267,18 @@ const AudioResponse: React.FC<ResponseItemProps> = ({ item }) => {
             {/* Content */}
             <View style={styles.content}>
                 <View style={styles.header}>
-                    <Image
-                        source={{ uri: item.profile_picture_url }}
-                        style={styles.profilePic}
-                    />
+                    {/* Use placeholder profile pic if none provided */}
+                    {item.profile_picture_url ? (
+                        <Image
+                            source={{ uri: item.profile_picture_url }}
+                            style={styles.profilePic}
+                        />
+                    ) : (
+                        <View style={styles.placeholderPic} />
+                    )}
                     <View style={styles.headerInfo}>
-                        <Text style={styles.username}>{item.user}</Text>
-                        <Text style={styles.timestamp}>{new Date(item.timestamp).toLocaleString()}</Text>
+                        <Text style={styles.username}>{item.username || 'Unknown User'}</Text>
+                        <Text style={styles.timestamp}>{getRelativeTime(item.timestamp)}</Text>
                     </View>
                 </View>
             </View>
@@ -243,7 +297,7 @@ const AudioResponse: React.FC<ResponseItemProps> = ({ item }) => {
                     )}
                 </View>
                 <Text style={styles.audioDuration}>
-                    {item.duration || formatTime(position)} / {formatTime(duration)}
+                    {formatTime(position)} / {formatTime(duration)}
                 </Text>
             </TouchableOpacity>
 
@@ -262,6 +316,7 @@ const AudioResponse: React.FC<ResponseItemProps> = ({ item }) => {
         </View>
     );
 };
+
 
 const styles = StyleSheet.create({
     responseItem: {
@@ -316,6 +371,12 @@ const styles = StyleSheet.create({
         width: 42,
         height: 42,
         borderRadius: 25,
+    },
+    placeholderPic: {
+        width: 36,
+        height: 36,
+        borderRadius: 18,
+        backgroundColor: '#444',
     },
     headerInfo: {
         marginLeft: 12,
