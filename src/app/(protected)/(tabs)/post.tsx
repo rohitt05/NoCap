@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
-import promptsData from '../../../assets/prompt/prompt.json';
-import Timer from '../../components/Post/Timer';
-import PromptCard from '../../components/Post/PromptCard';
-import TabsComponent from '../../components/Post/TabsComponent';
-import InputComponent from '../../components/Post/InputComponent';
+import promptsData from '../../../../assets/prompt/prompt.json';
+import Timer from '../../../components/Post/Timer';
+import PromptCard from '../../../components/Post/PromptCard';
+import TabsComponent from '../../../components/Post/TabsComponent';
+import InputComponent from '../../../components/Post/InputComponent';
 
 const Post = () => {
     // Get the first prompt from the imported data

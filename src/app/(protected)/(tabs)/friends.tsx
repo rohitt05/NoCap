@@ -18,7 +18,7 @@ export default function Friends() {
                 <Image
                     source={{ uri: item.profileImage }}
                     style={styles.friendImage}
-                    defaultSource={require('../../../assets/hattori.webp')}
+                    defaultSource={require('../../../../assets/hattori.webp')}
                 />
                 <Text style={styles.friendUsername}>{item.username}</Text>
             </View>
@@ -65,7 +65,7 @@ export default function Friends() {
                 <View style={styles.inviteBar}>
                     <View style={styles.inviteLeft}>
                         <Image
-                            source={require('../../../assets/hattori.webp')}
+                            source={require('../../../../assets/hattori.webp')}
                             style={styles.userImage}
                         />
                         <View style={styles.inviteTextContainer}>

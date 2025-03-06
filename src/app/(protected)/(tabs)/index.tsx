@@ -1,12 +1,12 @@
 // HomeScreen.jsx
 import { View, StyleSheet, SafeAreaView, Animated } from 'react-native';
 import React, { useRef } from 'react';
-import Prompt from '../../components/prompts';
+import Prompt from '../../../components/prompts';
 import { useNavigation } from '@react-navigation/native';
-import { HomeHeader } from '../../components/Header/Header';
-import responsesData from '../../../assets/response/response.json';
-import Responses from '../../components/responses/responses';
-import { ResponsesData } from '../../components/responses/types';
+import { HomeHeader } from '../../../components/Header/Header';
+import responsesData from '../../../../assets/response/response.json';
+import Responses from '../../../components/responses/responses';
+import { ResponsesData } from '../../../components/responses/types';
 
 const HomeScreen = () => {
     // Create an animated value for scroll position

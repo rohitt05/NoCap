@@ -2,13 +2,26 @@ import { View, Text, StyleSheet, TouchableOpacity, StatusBar, SafeAreaView, Scro
 import React, { useEffect, useState } from 'react';
 import { Ionicons, MaterialIcons, Feather, FontAwesome, MaterialCommunityIcons } from '@expo/vector-icons';
 import userData from '../../../../assets/userProfile/userData.json';
-import { Link } from 'expo-router';
+import { Link, router } from 'expo-router';
 import { handleShareNoCap } from '../../../utils/ShareUtils';
 import timeZoneState from '../../../utils/TimeUntils'; // Adjust path as needed
+import { useAuth } from '@clerk/clerk-expo';
 
 const SettingsScreen = () => {
+    const { signOut } = useAuth();
     // Use the shared state
     const [currentTimeZone] = timeZoneState.useTimeZone();
+
+    // Handle logout with navigation
+    const handleLogout = async () => {
+        try {
+            await signOut();
+            // Navigate to login screen or initial screen
+            router.replace('/');  // Adjust this path to your auth/login screen
+        } catch (error) {
+            console.error("Error signing out:", error);
+        }
+    };
 
     return (
         <SafeAreaView style={styles.container}>
@@ -112,7 +125,7 @@ const SettingsScreen = () => {
                 </View>
 
                 {/* Logout Button */}
-                <TouchableOpacity style={styles.logoutButton}>
+                <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
                     <Text style={styles.logoutText}>Log out</Text>
                 </TouchableOpacity>
 

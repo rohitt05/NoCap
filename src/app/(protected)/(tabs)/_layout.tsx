@@ -1,7 +1,7 @@
 // app/(tabs)/_layout.js
 import { Tabs } from "expo-router";
-import { Entypo, Ionicons, FontAwesome } from "@expo/vector-icons";
-import { HomeHeader, StandardHeader } from "../../components/Header/Header";
+import { Entypo, Ionicons, FontAwesome, Feather } from "@expo/vector-icons";
+import { HomeHeader, StandardHeader } from "../../../components/Header/Header";
 import React from "react";
 import { Animated } from "react-native";
 
@@ -28,6 +28,7 @@ export default function TabLayout() {
                     height: 60,
                 },
                 headerTintColor: 'white',
+
             }}
         >
             <Tabs.Screen

@@ -1,7 +1,7 @@
 import { View, Text, StatusBar, SafeAreaView, StyleSheet, TouchableOpacity } from 'react-native';
 import { useState } from 'react';
-import LastYearTab from '../../components/ArchiveTabs/LastYearTab';
-import MemoryLaneTab from '../../components/ArchiveTabs/MemoryLaneTab';
+import LastYearTab from '../../../components/ArchiveTabs/LastYearTab';
+import MemoryLaneTab from '../../../components/ArchiveTabs/MemoryLaneTab';
 
 export default function Archives() {
     const [activeTab, setActiveTab] = useState('lastYear');
