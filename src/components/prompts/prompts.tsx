@@ -1,92 +1,75 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ActivityIndicator, TouchableOpacity } from 'react-native';
-import promptsData from '../../../assets/prompt/prompt.json';
 import { loadFonts, fonts } from '../../utils/Fonts/fonts';
 import { Link } from 'expo-router';
+import { fetchPrompt } from '../../api/fetchPrompt';
 
 const PromptOfTheDay = () => {
     const [fontsLoaded, setFontsLoaded] = useState(false);
     const [fontError, setFontError] = useState(null);
-    const [timeRemaining, setTimeRemaining] = useState(100); // Start at 100%
+    const [timeRemaining, setTimeRemaining] = useState(100);
+    const [promptData, setPromptData] = useState({ text: '', time: '00:00:00' });
+    const [loadingPrompt, setLoadingPrompt] = useState(true);
+    const [error, setError] = useState(null);
 
-    // Parse the time string to get hours and calculate total minutes
+    useEffect(() => {
+        const getPrompt = async () => {
+            setLoadingPrompt(true);
+            const { data, error } = await fetchPrompt();
+
+            if (error) {
+                setError(error);
+            } else if (data) {
+                setPromptData(data);
+            }
+
+            setLoadingPrompt(false);
+        };
+
+        getPrompt();
+    }, []);
+
     useEffect(() => {
         if (fontsLoaded) {
-            // Example: If promptsData.time is "02:30:00" (2 hours, 30 minutes)
             try {
-                const timeString = promptsData.time || "00:00:00";
-                const [hours, minutes] = timeString.split(':').map(Number);
-                const totalMinutesInitial = hours * 60 + minutes;
-
-                // Mock timer to simulate time passing (in a real app, you'd compare with the end time)
                 const timer = setInterval(() => {
-                    setTimeRemaining(prev => {
-                        const newValue = prev - 0.1;
-                        if (newValue <= 0) {
-                            clearInterval(timer);
-                            return 0;
-                        }
-                        return newValue;
-                    });
+                    setTimeRemaining(prev => Math.max(prev - 0.1, 0));
                 }, 1000);
-
                 return () => clearInterval(timer);
             } catch (error) {
-                console.error("Error parsing time:", error);
+                console.error('Error updating timer:', error);
             }
         }
     }, [fontsLoaded]);
 
     useEffect(() => {
-        async function setupFonts() {
+        (async () => {
             const result = await loadFonts();
             setFontsLoaded(true);
-            if (!result.success) {
-                setFontError(result.error);
-            }
-        }
-
-        setupFonts();
+            if (!result.success) setFontError(result.error);
+        })();
     }, []);
 
-    if (!fontsLoaded) {
+    if (!fontsLoaded || loadingPrompt) {
         return (
             <View style={styles.loadingContainer}>
                 <ActivityIndicator size="large" color="#6441A5" />
-                <Text style={styles.loadingText}>Loading fonts...</Text>
+                <Text style={styles.loadingText}>Loading...</Text>
             </View>
         );
     }
 
-    // Calculate progress bar color based on time remaining
-    const getProgressBarColor = () => {
-        if (timeRemaining > 66) return '#fff';
-        if (timeRemaining > 33) return '#FFC107'; // Yellow
-        return '#FF5252'; // Red
-    };
-
-    // Calculate hours and minutes from timeRemaining percentage
-    const getTimeRemainingText = () => {
-        try {
-            const timeString = promptsData.time || "00:00:00";
-            const [hours, minutes] = timeString.split(':').map(Number);
-            const totalMinutesInitial = hours * 60 + minutes;
-
-            const minutesLeft = Math.floor((totalMinutesInitial * timeRemaining) / 100);
-            const hoursLeft = Math.floor(minutesLeft / 60);
-            const minsLeft = minutesLeft % 60;
-
-            return `${hoursLeft.toString().padStart(2, '0')}:${minsLeft.toString().padStart(2, '0')} remaining`;
-        } catch (error) {
-            return "Time remaining";
-        }
-    };
+    if (error) {
+        return (
+            <View style={styles.errorContainer}>
+                <Text style={styles.errorText}>Error loading prompt: {error}</Text>
+            </View>
+        );
+    }
 
     return (
         <View style={styles.container}>
             {fontError && <Text style={styles.errorText}>Font loading error. Using system fonts.</Text>}
-
-            {/* Greeting and title moved outside the card */}
             <View style={styles.outsideHeader}>
                 <Text style={styles.greetingText}>Hi, Rohit! 👋</Text>
                 <Text style={styles.promptTitle}>Prompt of the day</Text>
@@ -96,32 +79,15 @@ const PromptOfTheDay = () => {
                 <TouchableOpacity style={styles.promptCard}>
                     <View style={styles.promptContainer}>
                         <View style={styles.promptTextBorder}>
-                            <Text style={styles.promptText}>{promptsData.text}</Text>
+                            <Text style={styles.promptText}>{promptData.text}</Text>
                         </View>
                     </View>
-
                     <View style={styles.footer}>
                         <Text style={styles.tapToAnswerText}>"tap to answer"</Text>
-                        <Text style={styles.promptTime}>{promptsData.time}</Text>
+                        <Text style={styles.promptTime}>{promptData.time}</Text>
                     </View>
                 </TouchableOpacity>
             </Link>
-
-            {/* Time Remaining Progress Bar */}
-            <View style={styles.progressContainer}>
-                <View style={styles.progressBarBackground}>
-                    <View
-                        style={[
-                            styles.progressBarFill,
-                            {
-                                width: `${timeRemaining}%`,
-                                backgroundColor: getProgressBarColor()
-                            }
-                        ]}
-                    />
-                </View>
-                <Text style={styles.timeRemainingText}>{getTimeRemainingText()}</Text>
-            </View>
         </View>
     );
 };
@@ -137,10 +103,14 @@ const styles = StyleSheet.create({
         color: '#fff',
         marginTop: 10,
     },
+    errorContainer: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
     errorText: {
         color: '#ff6b6b',
-        marginBottom: 10,
-        fontSize: 12,
+        fontSize: 14,
     },
     container: {
         flex: 1,
@@ -166,15 +136,14 @@ const styles = StyleSheet.create({
     promptCard: {
         backgroundColor: '#132fba',
         borderRadius: 20,
-        minHeight: 200, // Reduced height as content was removed
-        display: 'flex',
+        minHeight: 200,
         flexDirection: 'column',
     },
     promptContainer: {
         flex: 1,
         paddingHorizontal: 15,
         justifyContent: 'center',
-        paddingTop: 20, // Added top padding since the header was removed
+        paddingTop: 20,
     },
     promptTextBorder: {
         borderWidth: 1,
@@ -204,26 +173,6 @@ const styles = StyleSheet.create({
         fontSize: 14,
         fontFamily: fonts.medium,
         color: '#fff',
-    },
-    // Progress bar styles
-    progressContainer: {
-        bottom: 5,
-        paddingHorizontal: 10,
-    },
-    progressBarBackground: {
-        height: 4,
-        overflow: 'hidden',
-    },
-    progressBarFill: {
-        height: '100%',
-        borderRadius: 4,
-    },
-    timeRemainingText: {
-        color: '#fff',
-        fontSize: 12,
-        fontFamily: fonts.medium,
-        marginTop: 5,
-        textAlign: 'right',
     }
 });
 

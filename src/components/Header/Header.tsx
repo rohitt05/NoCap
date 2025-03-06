@@ -1,15 +1,38 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Image, StyleSheet, Text, Animated, TouchableOpacity } from 'react-native';
 import { Link } from 'expo-router';
 import { FontAwesome } from '@expo/vector-icons';
-import promptsData from "../../../assets/prompt/prompt.json";
+import { fetchPrompt } from '../../api/fetchPrompt';
 import userData from '../../../assets/userProfile/userData.json';
-
 
 export const HomeHeader = ({
     scrollY = new Animated.Value(0),
     scrollThreshold = 200 // Default value, will be updated dynamically
 }) => {
+    const [promptText, setPromptText] = useState('');
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        const getPrompt = async () => {
+            try {
+                const { data, error } = await fetchPrompt();
+                if (data && !error) {
+                    setPromptText(data.text);
+                } else {
+                    console.error('Error fetching prompt:', error);
+                    setPromptText('Today\'s prompt');
+                }
+            } catch (err) {
+                console.error('Failed to fetch prompt:', err);
+                setPromptText('Today\'s prompt');
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        getPrompt();
+    }, []);
+
     // Calculate opacity based on scroll position with dynamically determined threshold
     const headerOpacity = scrollY.interpolate({
         inputRange: [scrollThreshold - 50, scrollThreshold],
@@ -56,7 +79,7 @@ export const HomeHeader = ({
                 pointerEvents="none" // This ensures it doesn't block touch events
             >
                 <Text style={styles.promptHeaderText} numberOfLines={1} ellipsizeMode="tail">
-                    {promptsData.text}
+                    {loading ? 'Loading prompt...' : promptText}
                 </Text>
             </Animated.View>
         </View>
